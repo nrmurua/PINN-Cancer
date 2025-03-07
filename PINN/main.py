@@ -1,5 +1,5 @@
 from PINN import PINN1D
-from debug_functions import test_with_init_forward, test_plot2D
+from debug_functions import test_with_init_forward, test_plot2D, test_load, test_show_model_states
 from io_util import load_data
 from plots import plot, plot2D
 
@@ -8,13 +8,20 @@ import numpy as np
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def init_model(N_init, T_init, I_init, n_layers, n_neurons, time_params, space_params):
-    initial_condition = [N_init, T_init, I_init]
-    model = PINN1D(initial_condition, n_layers, n_neurons, time_params, space_params)
+def init_model(data_init, n_layers, n_neurons, time_params, space_params):
+    model = PINN1D(data_init, n_layers, n_neurons, time_params, space_params, device)
 
     return model    
 
 if __name__ == "__main__":
+
+    #############################
+    ##### Debugging options ##### 
+    #############################
+
+    debug_mode = True
+    printable = True
+
     ########################################
     ##### PINN Architecture parameters ##### 
     ########################################
@@ -59,19 +66,28 @@ if __name__ == "__main__":
     ################################
 
     full_path = f'./noisy_data/case_{data_case}/noise_{data_noise}/'
-    train_path =  f'./noisy_data/case_{data_case}/noise_{data_noise}/samples/{n_points}_{jump}/'
+    train_path =  full_path + f'samples/{n_points}_{jump}/'
 
-    N_train, N_full = load_data(train_path + 'N.npy', full_path + 'N.npy', device)
-    T_train, T_full = load_data(train_path + 'T.npy', full_path + 'T.npy', device)
-    I_train, I_full = load_data(train_path + 'I.npy', full_path + 'I.npy', device)
+    if debug_mode:
+        test_load(full_path, train_path, device, printable)
 
-    test_plot2D(N_train, T_train, I_train, data_x, data_t)
+    data_train = load_data(train_path, device)
+    data_full = load_data(full_path, device)
 
-    N_init = N_train[0,0,:]
-    T_init = T_train[0,0,:]
-    I_init = I_train[0,0,:]
+    data_init = {
+        'N': data_full['N'][0,:],
+        'T': data_full['T'][0,:],
+        'I': data_full['I'][0,:],
+    }
 
-    model = init_model(N_init, T_init, I_init, layers, neurons, time_params, space_params)
+    print(data_init)
 
-    test_with_init_forward(model, printable=False)
+    if debug_mode:
+        test_plot2D(data_train, data_x, data_t)
+
+    model = init_model(data_init, layers, neurons, time_params, space_params)
+
+    if debug_mode:
+        test_show_model_states(model)
+        test_with_init_forward(model, printable=True)
    

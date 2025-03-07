@@ -4,7 +4,7 @@ import torch.optim as optim
 
 
 class PINN1D(nn.Module):
-    def __init__(self, initial_condition, num_hidden_layers, num_neurons, time_domain, space_domain, device="cpu"):
+    def __init__(self, data_init, num_hidden_layers, num_neurons, time_domain, space_domain, device="cpu"):
         #########################################################################################################################################################
         #                                                                                                                                                       #
         #   Input:                                                                                                                                              #
@@ -31,10 +31,7 @@ class PINN1D(nn.Module):
         super(PINN1D, self).__init__()
 
         # Initial setup of the PINN architecture 
-
-        self.N_init = initial_condition[0].to(device)
-        self.T_init = initial_condition[1].to(device)
-        self.I_init = initial_condition[2].to(device)
+        self.data_init = data_init
 
         layers = []
         input_size = 2
@@ -126,7 +123,7 @@ class PINN1D(nn.Module):
         return torch.exp(self.log_rho)
         
     @property
-    def s(self):
+    def alpha(self):
         return torch.exp(self.log_alpha)
 
     @property
@@ -255,5 +252,42 @@ class PINN1D(nn.Module):
             total_penalty += below_min_penalty + above_max_penalty
 
         return total_penalty        
+    
+    # Shows te state of the PINN parameters
+
+    def show_model_states(self):
+        print('Time Domain: \n')
+        print(self.t_domain)
+        print()
+
+        print('Space Domain: \n')
+        print(self.x_domain)
+        print()
+
+        print('Initial condition at time 0: \n')
+        print('N_init: ')
+        print(self.data_init['N'])
+
+        print('T_init: ')
+        print(self.data_init['T']) 
+        
+        print('I_init: ')
+        print(self.data_init['I']) 
+        print('\n')
+
+        print('Equation parameters: \n')
+        print(self.get_eq_params())
+        print()
+        
+        print('Parameter range: \n')
+        print('Min: ')
+        print(self.min_param_value)
+        print('Max: ')
+        print(self.max_param_value)
+        print()
+
+        print('Device: \n')
+        print(self.device)
+        print()
 
     
