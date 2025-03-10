@@ -77,6 +77,12 @@ def plot2D(M, x, y, name='M'):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
+    if x.device != 'cpu':
+        x = x.cpu()
+
+    if y.device != 'cpu':
+        y = y.cpu()
+
     X, Y = np.meshgrid(x, y)
 
     surf = ax.plot_surface(X, Y, M, cmap=plt.cm.cividis)

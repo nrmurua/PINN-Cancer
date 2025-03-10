@@ -1,5 +1,6 @@
-from PINN import PINN1D
+from PINN import PINN1D as pinn
 from debug_functions import test_with_init_forward, test_plot2D, test_load, test_show_model_states
+from debug_functions import test_data_loss
 from io_util import load_data
 from plots import plot, plot2D
 
@@ -7,11 +8,6 @@ import torch
 import numpy as np
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-def init_model(data_init, n_layers, n_neurons, time_params, space_params):
-    model = PINN1D(data_init, n_layers, n_neurons, time_params, space_params, device)
-
-    return model    
 
 if __name__ == "__main__":
 
@@ -26,8 +22,11 @@ if __name__ == "__main__":
     ##### PINN Architecture parameters ##### 
     ########################################
 
-    neurons = 5
-    layers = 3
+    nn_arch = {
+        'neurons': 5,
+        'layers': 3
+    }
+    
 
     ############################################
     ##### Time and Space domains params    #####
@@ -58,8 +57,8 @@ if __name__ == "__main__":
     ##### Time and Space indices  ####
     ##################################
 
-    data_x = torch.linspace(space_params[0], space_params[1], int((space_params[1]-space_params[0])/space_params[2]) + 1)
-    data_t = torch.linspace(0, n_points-2*(jump*0.02), n_points)
+    data_x = torch.linspace(space_params[0], space_params[1], int((space_params[1]-space_params[0])/space_params[2]) + 1).to(device)
+    data_t = torch.linspace(0, n_points-2*(jump*0.02), n_points).to(device)
 
     ################################
     ##### Load data from files  ####
@@ -72,6 +71,9 @@ if __name__ == "__main__":
         test_load(full_path, train_path, device, printable)
 
     data_train = load_data(train_path, device)
+    data_train['x'] = data_x
+    data_train['t'] = data_t
+
     data_full = load_data(full_path, device)
 
     data_init = {
@@ -80,14 +82,42 @@ if __name__ == "__main__":
         'I': data_full['I'][0,:],
     }
 
-    print(data_init)
-
     if debug_mode:
         test_plot2D(data_train, data_x, data_t)
 
-    model = init_model(data_init, layers, neurons, time_params, space_params)
+    ################################
+    ##### Model initialization  ####
+    ################################
+
+    model = pinn(data_train, nn_arch, time_params, space_params, device)
+
+    if printable:
+        test_show_model_states(model)
 
     if debug_mode:
-        test_show_model_states(model)
-        test_with_init_forward(model, printable=True)
-   
+        test_with_init_forward(model, printable)
+
+    train_params = {
+        'epochs': 100000,
+        'init_lr': 1e-3,
+        'patience': 2000,
+        'save_model_path': ''
+    }
+
+    loss_weights = {
+        'physics': 1,
+        'data': 0.01,
+        'params': 1,
+        'init': 0.1
+    }
+
+    ################################
+    #####    Model training     ####
+    ################################
+
+    if debug_mode:
+        test_data_loss(model, printable)
+
+    #model.train(data_train, train_params, loss_weights, device)
+
+    # Evaluar formato del output del modelo para el calculo de las perdidas 

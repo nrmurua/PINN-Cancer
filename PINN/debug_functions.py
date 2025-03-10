@@ -101,3 +101,15 @@ def test_load(train_path, full_path, device='cpu', printable=False):
         print(f"An error occurred: {e}")
 
 
+def test_data_loss(model, printable):
+    try:
+        print('Testing the data loss function from the PINN model')
+
+        data_loss = model.data_loss()
+
+        if printable:
+            print(data_loss)
+
+    except Exception as e:
+        print(f'An error has occurred: {e}')
+

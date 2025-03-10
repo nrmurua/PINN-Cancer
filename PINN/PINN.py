@@ -4,7 +4,7 @@ import torch.optim as optim
 
 
 class PINN1D(nn.Module):
-    def __init__(self, data_init, num_hidden_layers, num_neurons, time_domain, space_domain, device="cpu"):
+    def __init__(self, data_train, nn_arch, time_domain, space_domain, device="cpu"):
         #########################################################################################################################################################
         #                                                                                                                                                       #
         #   Input:                                                                                                                                              #
@@ -31,20 +31,27 @@ class PINN1D(nn.Module):
         super(PINN1D, self).__init__()
 
         # Initial setup of the PINN architecture 
-        self.data_init = data_init
+        self.data_N = data_train['N'].reshape(-1)
+        self.data_T = data_train['T'].reshape(-1)
+        self.data_I = data_train['I'].reshape(-1)
+
+        self.input_points = torch.cartesian_prod(data_train['t'], data_train['x'])
 
         layers = []
         input_size = 2
         output_size = 3
 
-        layers.append(nn.Linear(input_size, num_neurons))
+        n_neurons = nn_arch['neurons']
+        n_layers = nn_arch['layers']
+
+        layers.append(nn.Linear(input_size, n_neurons))
         layers.append(nn.SiLU())
 
-        for _ in range(num_hidden_layers):
-            layers.append(nn.Linear(num_neurons, num_neurons))
+        for _ in range(n_layers):
+            layers.append(nn.Linear(n_neurons, n_neurons))
             layers.append(nn.SiLU())
 
-        layers.append(nn.Linear(num_neurons, output_size))
+        layers.append(nn.Linear(n_neurons, output_size))
 
         self.solution_network = nn.Sequential(*layers).to(device)
 
@@ -52,7 +59,7 @@ class PINN1D(nn.Module):
 
         self.device = device
 
-        # Initialization of the time and space domains
+        # Initialization of the full time and space domains
 
         self.t_domain = torch.linspace(0, time_domain[0], time_domain[1], device=device)
 
@@ -141,21 +148,17 @@ class PINN1D(nn.Module):
 
     # Pass the input through the PINN model
 
-    def forward(self, t, x):
-        input_points = torch.column_stack([t, x])
-
+    def forward(self, input_points):
         solution = self.solution_network(input_points)
+        
         return solution
         
 
     # Test initial condition Forward
 
     def init_forward(self):
-        input_points = torch.column_stack([torch.zeros_like(self.x_domain), self.x_domain])
-        
-        # print(input_points)
-        
-        sol = self.solution_network(input_points)
+        print(self.input_points[:1001])
+        sol = self.solution_network(self.input_points[:1001])
 
         return sol
 
@@ -208,7 +211,16 @@ class PINN1D(nn.Module):
         f_I = dI_dt - (self.Di*dI_dx2 + self.s + (self.rho*I*T/(self.alpha + T)) - self.c4*I*T - self.d1*I)
 
         return torch.mean(f_N**2 + f_T**2 + f_I**2)
+
+    def data_loss(self):
+        predicted = self.forward(self.input_points)
         
+        N_loss = (predicted[:,0] - self.data_N.reshape(-1))**2
+        T_loss = (predicted[:,1] - self.data_T.reshape(-1))**2
+        I_loss = (predicted[:,2] - self.data_I.reshape(-1))**2
+
+        return torch.mean(N_loss + T_loss + I_loss)
+
 
     # Return the parameters for the equations 
 
@@ -264,15 +276,18 @@ class PINN1D(nn.Module):
         print(self.x_domain)
         print()
 
-        print('Initial condition at time 0: \n')
-        print('N_init: ')
-        print(self.data_init['N'])
+        print('Data_train: \n')
+        print('N_train: ')
+        print(self.data_N)
 
-        print('T_init: ')
-        print(self.data_init['T']) 
+        print('T_train: ')
+        print(self.data_T) 
         
-        print('I_init: ')
-        print(self.data_init['I']) 
+        print('I_train: ')
+        print(self.data_I)
+
+        print('input_points: ')
+        print(self.input_points) 
         print('\n')
 
         print('Equation parameters: \n')
@@ -290,4 +305,31 @@ class PINN1D(nn.Module):
         print(self.device)
         print()
 
-    
+        print('Printing model.parameters(): \n\n')
+
+        for name, param in self.named_parameters():
+            print(f"Nombre: {name}")
+            print(f"Forma: {param.shape}")
+            print(f"Valores: {param.data}\n")
+
+
+
+
+    # Training loop for the PINN model
+
+    def train(self, data_train, training_params, loss_weights, device):
+        optimizer = optim.Adam(self.parameters(), lr=training_params['init_lr'])
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode = 'min',
+            factor = 0.5,
+            patience = 500,
+            min_lr = 1e-5
+        )
+
+        for epoch in range(training_params['epochs']):
+            optimizer.zero_grad()
+
+            L_data = self.data_loss(data_train) * loss_weights['data']
+
+            #### implementar las funciones de perdida
