@@ -1,7 +1,8 @@
-from PINN import PINN1D as pinn
+from PINN1D import PINN1D as pinn
+from Evaluator import Evaluator as ev
 from debug_functions import *
 
-from io_util import load_data, save_model, load_model
+from io_util import load_data, save_model, load_model, print_metrics
 from plots import plot, plot2D
 import time 
 
@@ -58,7 +59,7 @@ if __name__ == "__main__":
     ##################################
     ##### Time and Space indices  ####
     ##################################
-
+    
     data_x = torch.linspace(space_params[0], space_params[1], int((space_params[1]-space_params[0])/space_params[2]) + 1).to(device)
     data_t = torch.linspace(0, n_points-2*(jump*0.02), n_points).to(device)
 
@@ -76,14 +77,6 @@ if __name__ == "__main__":
     data_train['x'] = data_x
     data_train['t'] = data_t
 
-    data_full = load_data(full_path, device)
-
-    data_init = {
-        'N': data_full['N'][0,:],
-        'T': data_full['T'][0,:],
-        'I': data_full['I'][0,:],
-    }
-
     if debug_plot:
         test_plot2D(data_train, data_x, data_t)
 
@@ -99,7 +92,7 @@ if __name__ == "__main__":
         'x': torch.linspace(physics_space_params[0], physics_space_params[1], int((physics_space_params[1] - physics_space_params[0])/physics_space_params[2] + 1), device=device)
     }
 
-    model = pinn(data_train, physics_training_domain, nn_arch, time_params, space_params, device)
+    model = pinn(data_train, physics_training_domain, nn_arch, device)
 
     if debug_printable:
         test_show_model_states(model)
@@ -142,9 +135,16 @@ if __name__ == "__main__":
 
     model_path = save_model(model, dir_path, file)
 
-    print(model_path)
-
     if debug_mode:
         test_load_model(model, model_path)
         
-        
+    ##################################
+    #####    Model evaluation     ####
+    ##################################
+    
+
+    data_full = load_data(full_path, device)
+    evaluator = ev(time_params, space_params, data_train, data_full, device)
+
+    metrics = evaluator.evaluate(model)
+    print_metrics(metrics)

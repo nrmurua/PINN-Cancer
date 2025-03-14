@@ -23,4 +23,12 @@ def save_model(model, dir_path, file):
 def load_model(model, path):
     model.load_state_dict(torch.load(path))  
     
+def print_metrics(metrics):
+    print(f"Metrics of the trained model: \n")
+
+    for label, metric in metrics.items():
+        print(f"{label} Variable Metrics: \n")
+        for metric_name, value in metric.items():
+            print(f"  {metric_name}: {value:.6f}")
+        print()
 

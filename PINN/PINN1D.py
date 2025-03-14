@@ -4,27 +4,20 @@ import torch.optim as optim
 import copy
 
 class PINN1D(nn.Module):
-    def __init__(self, data_train, physics_train_domain, nn_arch, time_domain, space_domain, device="cpu"):
+    def __init__(self, data_train, physics_train_domain, nn_arch, device="cpu"):
         #########################################################################################################################################################
         #                                                                                                                                                       #
         #   Input:                                                                                                                                              #
         #       - initial_condition = [<t0>, <x>]                                                                                                               #
         #       - num_hidden_layers = int                                                                                                                       #
         #       - num_neurons = int                                                                                                                             #
-        #       - time_domain = [<full_time_limit (>0)>, <number of samples>]                                                                                                  #
+        #       - time_domain = [<full_time_limit (>0)>, <number of samples>]                                                                                   #
         #       - space_domain = [<x1>, <x2>, <dx>]                                                                                                             #
         #                                                                                                                                                       #
         #   Initialization Tasks:                                                                                                                               #
         #       - Initial setup of PINN architecture.                                                                                                           #
         #       - Define time and space domains.                                                                                                                #
         #       - Random and always positive parameters.                                                                                                        #
-        #                                                                                                                                                       #
-        #   Class Functions:                                                                                                                                    #
-        #       - forward: Pass the input through the model, returning the output.                                                                              #
-        #       - physics_Loss: Compute the Physics Loss with automatic differentiation.                                                                        #
-        #       - get_eq_params: return a dictionary with all the parameters.                                                                            #
-        #       - initial_condition_loss: compares the output of the model on time = 0 with the known noisy initial condition, returning a loss component.      #
-        #       - parameter_range_regularization: enforces the restriction of parameters in the range [p0, p1] with p0<p1. Returns an extra loss component.     #
         #                                                                                                                                                       #
         #########################################################################################################################################################
 
@@ -69,14 +62,6 @@ class PINN1D(nn.Module):
         # Device hardware
 
         self.device = device
-
-        # Initialization of the full time and space domains
-
-        self.t_domain = torch.linspace(0, time_domain[0], time_domain[1], device=device)
-
-        x_samples = int((space_domain[1] - space_domain[0])/space_domain[2] + 1)
-
-        self.x_domain = torch.linspace(space_domain[0], space_domain[1], x_samples, device=device)
 
         # Range of the parameters for regularization
 
@@ -156,7 +141,17 @@ class PINN1D(nn.Module):
         return torch.exp(self.eq_params['Di'])
 
 
-    # Pass the input through the PINN model
+    #########################################################################################################################################################    
+    #                                                                                                                                                       #
+    #   Class Functions:                                                                                                                                    #
+    #       - forward: Pass the input through the model, returning the output.                                                                              #
+    #       - physics_Loss: Compute the Physics Loss with automatic differentiation.                                                                        #
+    #       - get_eq_params: return a dictionary with all the parameters.                                                                                   #
+    #       - initial_condition_loss: compares the output of the model on time = 0 with the known noisy initial condition, returning a loss component.      #
+    #       - parameter_range_regularization: enforces the restriction of parameters in the range [p0, p1] with p0<p1. Returns an extra loss component.     #
+    #                                                                                                                                                       #
+    #########################################################################################################################################################
+    
 
     def forward(self, input_points):
         solution = self.solution_network(input_points)
@@ -398,12 +393,4 @@ class PINN1D(nn.Module):
         
         print('Model has been trained without errors :)')
 
-    def evaluate_model(self, dataset='Training'):
-        with torch.no_grad():
-            if dataset == 'Training':
-                pred = self(self.data_points)
-            
-
-
-        ### Complete the evaluation of the model in the 
 

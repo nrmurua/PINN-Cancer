@@ -1,6 +1,6 @@
 from plots import plot2D
 from io_util import load_data, save_model, load_model
-from PINN import PINN1D
+from PINN1D import PINN1D
 
 
 def test_init_model(N_init, T_init, I_init, layers, neurons, time_params, space_params):
@@ -218,7 +218,7 @@ def test_load_model(model, model_path):
         load_model(model, model_path)
 
         print('Model loaded without errors')
-        print('Ending testtt_load_model \n \n')
+        print('Ending test_load_model \n \n')
 
     except Exception as e:
         print(f'An error has occurres: {e} \n \n \n')
