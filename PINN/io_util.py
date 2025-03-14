@@ -13,3 +13,14 @@ def load_data(path, device='cpu'):
 
     return data
 
+def save_model(model, dir_path, file):
+    os.makedirs(dir_path, exist_ok=True)
+    model_path = os.path.join(dir_path, file)
+    torch.save(model.state_dict(), model_path)
+
+    return model_path
+
+def load_model(model, path):
+    model.load_state_dict(torch.load(path))  
+    
+

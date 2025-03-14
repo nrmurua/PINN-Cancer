@@ -1,23 +1,25 @@
 from PINN import PINN1D as pinn
-from debug_functions import test_with_init_forward, test_plot2D, test_load, test_show_model_states
-from debug_functions import test_data_loss
-from io_util import load_data
+from debug_functions import *
+
+from io_util import load_data, save_model, load_model
 from plots import plot, plot2D
+import time 
 
 import torch 
 import numpy as np
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-if __name__ == "__main__":
+#############################
+##### Debugging options ##### 
+#############################
 
-    #############################
-    ##### Debugging options ##### 
-    #############################
+debug_mode = True
+debug_printable = False
+debug_plot = False
+disable_train = True
 
-    debug_mode = True
-    printable = True
-
+if __name__ == "__main__":  
     ########################################
     ##### PINN Architecture parameters ##### 
     ########################################
@@ -43,9 +45,9 @@ if __name__ == "__main__":
     time_params = [60, 3001]
     space_params = [-5, 5, 0.01] 
 
-    ###########################
-    ##### Data parameters #####
-    ###########################
+    ###############################################
+    ##### Data parameters for the file reader #####
+    ###############################################
 
     data_case = 0
     data_noise = 0.003
@@ -68,7 +70,7 @@ if __name__ == "__main__":
     train_path =  full_path + f'samples/{n_points}_{jump}/'
 
     if debug_mode:
-        test_load(full_path, train_path, device, printable)
+        test_load(full_path, train_path, device, printable=debug_printable)
 
     data_train = load_data(train_path, device)
     data_train['x'] = data_x
@@ -82,23 +84,31 @@ if __name__ == "__main__":
         'I': data_full['I'][0,:],
     }
 
-    if debug_mode:
+    if debug_plot:
         test_plot2D(data_train, data_x, data_t)
 
     ################################
     ##### Model initialization  ####
     ################################
 
-    model = pinn(data_train, nn_arch, time_params, space_params, device)
+    physics_time_params = [60, 15]
+    physics_space_params = [-5, 5, 1]
 
-    if printable:
+    physics_training_domain = {
+        't': torch.linspace(0, physics_time_params[0], physics_time_params[1], device=device),
+        'x': torch.linspace(physics_space_params[0], physics_space_params[1], int((physics_space_params[1] - physics_space_params[0])/physics_space_params[2] + 1), device=device)
+    }
+
+    model = pinn(data_train, physics_training_domain, nn_arch, time_params, space_params, device)
+
+    if debug_printable:
         test_show_model_states(model)
 
     if debug_mode:
-        test_with_init_forward(model, printable)
+        test_forward(model, printable=debug_printable)
 
     train_params = {
-        'epochs': 100000,
+        'epochs': 1000,
         'init_lr': 1e-3,
         'patience': 2000,
         'save_model_path': ''
@@ -116,8 +126,25 @@ if __name__ == "__main__":
     ################################
 
     if debug_mode:
-        test_data_loss(model, printable)
+        test_data_loss(model, printable=debug_printable)
+        test_physics_loss(model, printable=debug_printable)
+        test_parameter_range_regularization(model, printable=debug_printable)
+        test_initial_condition_loss(model, printable=debug_printable)
+    
+    if not disable_train:
+        start_time = time.time()
+        model.train(train_params, loss_weights, printable=debug_printable)
+        end_time = time.time()
+        train_time = end_time - start_time
 
-    #model.train(data_train, train_params, loss_weights, device)
+    dir_path = f'results/case_{data_case}/noise_{data_noise}/{nn_arch["layers"]}_{nn_arch["neurons"]}_{jump}_{n_points}/'
+    file = 'model.pth'
 
-    # Evaluar formato del output del modelo para el calculo de las perdidas 
+    model_path = save_model(model, dir_path, file)
+
+    print(model_path)
+
+    if debug_mode:
+        test_load_model(model, model_path)
+        
+        

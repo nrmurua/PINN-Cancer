@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
+import copy
 
 class PINN1D(nn.Module):
-    def __init__(self, data_train, nn_arch, time_domain, space_domain, device="cpu"):
+    def __init__(self, data_train, physics_train_domain, nn_arch, time_domain, space_domain, device="cpu"):
         #########################################################################################################################################################
         #                                                                                                                                                       #
         #   Input:                                                                                                                                              #
@@ -30,12 +30,23 @@ class PINN1D(nn.Module):
 
         super(PINN1D, self).__init__()
 
-        # Initial setup of the PINN architecture 
-        self.data_N = data_train['N'].reshape(-1)
-        self.data_T = data_train['T'].reshape(-1)
-        self.data_I = data_train['I'].reshape(-1)
+        # Initialization of training data
+        
+        self.data_N = data_train['N']
+        self.data_T = data_train['T']
+        self.data_I = data_train['I']
 
-        self.input_points = torch.cartesian_prod(data_train['t'], data_train['x'])
+        self.data_points = torch.cartesian_prod(data_train['t'], data_train['x'])
+
+        # Initialization of the Physics points
+
+        self.physics_train_domain = {
+            't': physics_train_domain['t'],
+            'x': physics_train_domain['x']
+        }
+        self.physics_points = torch.cartesian_prod(physics_train_domain['t'], physics_train_domain['x']).requires_grad_(True)
+
+        # Initial setup of the PINN architecture 
 
         layers = []
         input_size = 2
@@ -74,76 +85,75 @@ class PINN1D(nn.Module):
 
         # Initialization of parameters in logarithmic form
 
-        self.log_Ng_params = nn.Parameter(torch.randn(2, device=self.device) * 0.01)
-        self.log_Tg_params = nn.Parameter(torch.randn(2, device=self.device) * 0.01)
-        
-        self.log_c1 = nn.Parameter(torch.randn(1, device=self.device) * 0.01)
-        self.log_c2 = nn.Parameter(torch.randn(1, device=self.device) * 0.01)
-        self.log_c3 = nn.Parameter(torch.randn(1, device=self.device) * 0.01)
-        self.log_c4 = nn.Parameter(torch.randn(1, device=self.device) * 0.01)
-
-        self.log_d1 = nn.Parameter(torch.randn(1, device=self.device) * 0.01)
-        self.log_s = nn.Parameter(torch.randn(1, device=self.device) * 0.01)
-        self.log_rho = nn.Parameter(torch.randn(1, device=self.device) * 0.01)
-        self.log_alpha = nn.Parameter(torch.randn(1, device=self.device) * 0.01)
-
-        self.log_Dn = nn.Parameter(torch.randn(1, device=self.device) * 0.01)
-        self.log_Dt = nn.Parameter(torch.randn(1, device=self.device) * 0.01)
-        self.log_Di = nn.Parameter(torch.randn(1, device=self.device) * 0.01)
+        self.eq_params = {
+            'Ng_params': nn.Parameter(torch.randn(2, device=self.device) * 0.01),
+            'Tg_params': nn.Parameter(torch.randn(2, device=self.device) * 0.01),
+            'c1': nn.Parameter(torch.randn(1, device=self.device) * 0.01),
+            'c2': nn.Parameter(torch.randn(1, device=self.device) * 0.01),
+            'c3': nn.Parameter(torch.randn(1, device=self.device) * 0.01),
+            'c4': nn.Parameter(torch.randn(1, device=self.device) * 0.01),
+            'd1': nn.Parameter(torch.randn(1, device=self.device) * 0.01),
+            's': nn.Parameter(torch.randn(1, device=self.device) * 0.01),
+            'rho': nn.Parameter(torch.randn(1, device=self.device) * 0.01),
+            'alpha': nn.Parameter(torch.randn(1, device=self.device) * 0.01),
+            'Dn': nn.Parameter(torch.randn(1, device=self.device) * 0.01),
+            'Dt': nn.Parameter(torch.randn(1, device=self.device) * 0.01),
+            'Di': nn.Parameter(torch.randn(1, device=self.device) * 0.01)
+        }
 
     # Properties for the recovery of parameters with the exponential function
 
     @property
     def Ng_params(self):
-        return torch.exp(self.log_Ng_params)
+        return torch.exp(self.eq_params['Ng_params'])
         
     @property
     def Tg_params(self):
-        return torch.exp(self.log_Tg_params)
+        return torch.exp(self.eq_params['Tg_params'])
                              
     @property
     def c1(self):
-        return torch.exp(self.log_c1)
+        return torch.exp(self.eq_params['c1'])
                              
     @property
     def c2(self):
-        return torch.exp(self.log_c2)
+        return torch.exp(self.eq_params['c2'])
         
     @property
     def c3(self):
-        return torch.exp(self.log_c3)
+        return torch.exp(self.eq_params['c3'])
                              
     @property
     def c4(self):
-        return torch.exp(self.log_c4)                            
+        return torch.exp(self.eq_params['c4'])                            
 
     @property
     def d1(self):
-        return torch.exp(self.log_d1)
+        return torch.exp(self.eq_params['d1'])
                              
     @property
     def s(self):
-        return torch.exp(self.log_s)
+        return torch.exp(self.eq_params['s'])
         
     @property
     def rho(self):
-        return torch.exp(self.log_rho)
+        return torch.exp(self.eq_params['rho'])
         
     @property
     def alpha(self):
-        return torch.exp(self.log_alpha)
+        return torch.exp(self.eq_params['alpha'])
 
     @property
     def Dn(self):
-        return torch.exp(self.log_Dn)
+        return torch.exp(self.eq_params['Dn'])
         
     @property
     def Dt(self):
-        return torch.exp(self.log_Dt)
+        return torch.exp(self.eq_params['Dt'])
         
     @property
     def Di(self):
-        return torch.exp(self.log_Di)
+        return torch.exp(self.eq_params['Di'])
 
 
     # Pass the input through the PINN model
@@ -152,68 +162,56 @@ class PINN1D(nn.Module):
         solution = self.solution_network(input_points)
         
         return solution
+       
+
+    def diff(self, U):
+
+        grad_U = torch.autograd.grad(outputs=U, inputs=self.physics_points, grad_outputs=torch.ones_like(U), create_graph=True)[0]
+
+        dU_t = grad_U[:,0]
+        dU_x = grad_U[:,1]
         
+        del grad_U
 
-    # Test initial condition Forward
+        grad2_U = torch.autograd.grad(outputs=dU_x, inputs=self.physics_points, grad_outputs=torch.ones_like(dU_x), create_graph=True)[0]
 
-    def init_forward(self):
-        print(self.input_points[:1001])
-        sol = self.solution_network(self.input_points[:1001])
+        dU_xx = grad2_U[:,1]
 
-        return sol
+        del grad2_U
+        if self.device == 'cuda':
+            torch.cuda.empty_cache()
 
+        return dU_t, dU_xx
 
     # Compute the Physics_Loss with automatic differentiation
 
-    def physics_loss(self, t, x):
-        t_grad = t.clone().requires_grad_(True)
-        x_grad = x.clone().requires_grad_(True)
-        solution = self.forward(t_grad)
-        N, T, I = solution[:, :, 0], solution[:, :, 1], solution[:, :, 2]
+    def physics_loss(self):
+        solution = self.forward(self.physics_points)
 
-        # Autoderivacion
-
-        # N temporal
-
-        dN_dt = torch.autograd.grad(N, t_grad, grad_outputs=torch.ones_like(N), create_graph=True)[0]
-            
-        # N Espacial
-
-        dN_dx = torch.autograd.grad(N, x_grad, grad_outputs=torch.ones_like(N), create_graph=True)[0]
-        dN_dx2 = torch.autograd.grad(dN_dx, x_grad, grad_outputs=torch.ones_like(N), create_graph=True)[0]
-
-
-        # T temporal
-
-        dT_dt = torch.autograd.grad(T, t_grad, grad_outputs=torch.ones_like(T), create_graph=True)[0]
-            
-        # T Espacial
-
-        dT_dx = torch.autograd.grad(T, x_grad, grad_outputs=torch.ones_like(T), create_graph=True)[0]
-        dT_dx2 = torch.autograd.grad(dT_dx, x_grad, grad_outputs=torch.ones_like(T), create_graph=True)[0]
-
-
-        # I temporal
-
-        dI_dt = torch.autograd.grad(I, t_grad, grad_outputs=torch.ones_like(I), create_graph=True)[0]
-
-        # I Espacial
-
-        dI_dx = torch.autograd.grad(I, x_grad, grad_outputs=torch.ones_like(I), create_graph=True)[0]
-        dI_dx2 = torch.autograd.grad(dI_dx, x_grad, grad_outputs=torch.ones_like(I), create_graph=True)[0]
+        N = solution[:,0]
+        T = solution[:,1]
+        I = solution[:,2]  
 
         def g(x, params):
             return params[0] * (1 - x/params[1])
-            
-            
-        f_N = dN_dt - (self.Dn*dN_dx2 + N*g(N, self.Ng_params) - self.c1*N*T)
-        f_T = dT_dt - (self.Dt*dT_dx2 + T*g(T, self.Tg_params) - self.c2*N*T - self.c3*T*I)
-        f_I = dI_dt - (self.Di*dI_dx2 + self.s + (self.rho*I*T/(self.alpha + T)) - self.c4*I*T - self.d1*I)
+
+        dN_t, dN_xx = self.diff(N)
+        f_N = dN_t - (self.Dn * dN_xx + N * g(N, self.Ng_params) - self.c1 * N * T)
+        del dN_t, dN_xx
+
+        dT_t, dT_xx = self.diff(T)
+        f_T = dT_t - (self.Dt * dT_xx + T * g(T, self.Tg_params) - self.c2 * T * N - self.c3 * T * I)
+        del dT_t, dT_xx
+
+        dI_t, dI_xx = self.diff(N)
+        f_I = dI_t - (self.Di * dI_xx + self.s + (self.rho * I * T / (self.alpha + T)) - self.c4 * I * T - self.d1 * I)
+        del dI_t, dI_xx
 
         return torch.mean(f_N**2 + f_T**2 + f_I**2)
 
+
     def data_loss(self):
-        predicted = self.forward(self.input_points)
+        predicted = self.forward(self.data_points)
         
         N_loss = (predicted[:,0] - self.data_N.reshape(-1))**2
         T_loss = (predicted[:,1] - self.data_T.reshape(-1))**2
@@ -244,23 +242,26 @@ class PINN1D(nn.Module):
 
     # Computes the initial condition loss
 
-    def initial_condition_loss(self, x):
-        initial_cond = torch.stack(torch.zeros(1, device=self.device), x)
-        initial_pred = self.forward(initial_cond)
+    def initial_condition_loss(self):
+        initial_pred = self.forward(self.data_points[:1001])
 
-        return torch.mean((initial_pred - self.initial_condition)**2)
+        N_loss = initial_pred[:,0] - self.data_N[0,:]
+        T_loss = initial_pred[:,1] - self.data_T[0,:]
+        I_loss = initial_pred[:,2] - self.data_I[0,:]
+
+        return torch.mean((N_loss**2 + T_loss**2 + I_loss**2))
 
 
     # Computes the parameter regularization loss
 
     def parameter_range_regularization(self):
-        params = self.get_positive_params
+        params = self.get_eq_params()
 
         total_penalty = 0.0
 
         for name, param in params.items():
             below_min_penalty = torch.sum(torch.relu(self.min_param_value - param)**2)
-            above_max_penalty = torch.sum(torch.relu(params - self.max_param_value)**2)
+            above_max_penalty = torch.sum(torch.relu(param - self.max_param_value)**2)
             total_penalty += below_min_penalty + above_max_penalty
 
         return total_penalty        
@@ -286,8 +287,8 @@ class PINN1D(nn.Module):
         print('I_train: ')
         print(self.data_I)
 
-        print('input_points: ')
-        print(self.input_points) 
+        print('data_points: ')
+        print(self.data_points) 
         print('\n')
 
         print('Equation parameters: \n')
@@ -317,7 +318,9 @@ class PINN1D(nn.Module):
 
     # Training loop for the PINN model
 
-    def train(self, data_train, training_params, loss_weights, device):
+    def train(self, training_params, loss_weights, printable):
+        print('Starting model Training')
+
         optimizer = optim.Adam(self.parameters(), lr=training_params['init_lr'])
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer,
@@ -327,9 +330,80 @@ class PINN1D(nn.Module):
             min_lr = 1e-5
         )
 
+        best_loss = float('inf')
+        losses = []
+        count = 0
+
+        best_state = {
+            'eq': copy.deepcopy(self.eq_params),
+            'sd': copy.deepcopy(self.state_dict())
+        }
+
         for epoch in range(training_params['epochs']):
             optimizer.zero_grad()
 
-            L_data = self.data_loss(data_train) * loss_weights['data']
+            L_data = self.data_loss() * loss_weights['data']
+            L_physics = self.physics_loss() * loss_weights['physics']
+            L_param = self.parameter_range_regularization() * loss_weights['params']
+            L_init = self.initial_condition_loss() * loss_weights['init']
 
-            #### implementar las funciones de perdida
+            total_loss = L_physics + L_data + L_param + L_init
+
+            total_loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
+
+            optimizer.step()
+            scheduler.step(total_loss)
+
+            losses.append(total_loss.item())
+
+            if total_loss < best_loss:
+                best_loss = total_loss.item()
+                count = 0
+                best_state['eq'] = copy.deepcopy(self.eq_params)
+                best_state['sd'] = copy.deepcopy(self.state_dict())
+                last_saved_epoch = epoch
+                last_saved_loss = best_loss
+            else:
+                count += 1
+
+            if printable:
+                if epoch % 100 == 0:
+                    print(f'Epoch {epoch}: '
+                        f'Total Loss = {total_loss.item():.9f}, '
+                        f'Physics Loss = {L_physics.item():.9f}, '
+                        f'Data Loss = {L_data.item():.9f}, '
+                        f'Initial Condition Loss = {L_init.item():.9f}, '
+                        f'Parameter Reg Loss = {L_param.item():.9f}, '
+                        f'LR = {scheduler.get_last_lr()[0]:.6f}',
+                    )
+                    print(f'Last saved loss: {last_saved_loss:.9f}, '
+                          f'Last saved epoch: {last_saved_epoch}\n')
+
+            if count >= training_params['patience']:
+                print(f'Early stopping at epoch {epoch}. Out of patience')
+                print('Returning model state to last saved: \n')
+                print(f'loss: {last_saved_loss:.9f}, '
+                      f'epoch: {last_saved_epoch:.9f} \n')
+                
+                self.load_state_dict(best_state['sd'])
+                self.eq_params = best_state['eq']
+
+                break
+
+            if best_loss < 1e-5:
+                print(f'Early stopping at epoch {epoch}. Good enough')
+                print(f'Reached Loss: {last_saved_loss:.9f}')
+                break
+        
+        print('Model has been trained without errors :)')
+
+    def evaluate_model(self, dataset='Training'):
+        with torch.no_grad():
+            if dataset == 'Training':
+                pred = self(self.data_points)
+            
+
+
+        ### Complete the evaluation of the model in the 
+
