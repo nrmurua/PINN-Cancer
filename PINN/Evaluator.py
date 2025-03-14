@@ -10,7 +10,8 @@ class Evaluator():
         full_x = torch.linspace(x_domain[0], x_domain[1], x_samples, device=device)
 
         self.full_grid = torch.cartesian_prod(full_t, full_x)
-        self.sampled_grid = self.full_grid
+        self.t = full_t.shape[0]
+        self.x = full_x.shape[0]
         self.data_train = data_train
 
         self.full_data = {
@@ -21,14 +22,6 @@ class Evaluator():
 
         self.device = device
 
-
-    def grid_tuning(self, time_resolution, space_resolution, device):
-        t = torch.linspace(0, time_resolution[0], time_resolution[1], device=device)
-        x_samples = int((space_resolution[1] - space_resolution[0])/space_resolution[2] + 1)
-        x = torch.linspace(space_resolution[0], space_resolution[1], x_samples, device=device)
-        
-        self.sampled_grid = torch.cartesian_prod(t,x)
-
     def evaluate(self, model):
         with torch.no_grad():
             sol = model(self.full_grid)
@@ -38,7 +31,10 @@ class Evaluator():
             'T': {},
             'I': {}
         }
+
         labels = ['N', 'T', 'I']
+
+        sol_matrix = {}
 
         for i, label in enumerate(labels):
             metrics[label]['MSE'] = torch.mean((self.full_data[label] - sol[:,i]) ** 2)
@@ -46,5 +42,7 @@ class Evaluator():
             metrics[label]['RMSE'] = torch.sqrt(metrics[label]['MSE'])
             metrics[label]['R2_Score'] = (1 - (torch.sum((self.full_data[label] - sol[:, i])**2) / 
                              torch.sum((self.full_data[label] - torch.mean(self.full_data[label]))**2)))
-        
-        return metrics
+
+            sol_matrix[label] = sol[:,i].view(self.t, self.x).cpu().numpy()
+
+        return metrics, sol_matrix

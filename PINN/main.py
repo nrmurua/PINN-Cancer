@@ -4,8 +4,9 @@ from debug_functions import *
 
 from io_util import load_data, save_model, load_model, print_metrics
 from plots import plot, plot2D
-import time 
+from data_util import sec_to_matrix, matrix_to_sec
 
+import time 
 import torch 
 import numpy as np
 
@@ -45,6 +46,11 @@ if __name__ == "__main__":
 
     time_params = [60, 3001]
     space_params = [-5, 5, 0.01] 
+
+    full_t = torch.linspace(0, time_params[0], time_params[1], device=device)
+    x_samples = int((space_params[1] - space_params[0])/space_params[2] + 1)
+    full_x = torch.linspace(space_params[0], space_params[1], x_samples, device=device)
+
 
     ###############################################
     ##### Data parameters for the file reader #####
@@ -146,5 +152,7 @@ if __name__ == "__main__":
     data_full = load_data(full_path, device)
     evaluator = ev(time_params, space_params, data_train, data_full, device)
 
-    metrics = evaluator.evaluate(model)
+    metrics, sol = evaluator.evaluate(model)
     print_metrics(metrics)
+    
+
