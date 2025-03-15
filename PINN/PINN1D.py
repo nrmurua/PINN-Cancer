@@ -5,22 +5,6 @@ import copy
 
 class PINN1D(nn.Module):
     def __init__(self, data_train, physics_train_domain, nn_arch, device="cpu"):
-        #########################################################################################################################################################
-        #                                                                                                                                                       #
-        #   Input:                                                                                                                                              #
-        #       - initial_condition = [<t0>, <x>]                                                                                                               #
-        #       - num_hidden_layers = int                                                                                                                       #
-        #       - num_neurons = int                                                                                                                             #
-        #       - time_domain = [<full_time_limit (>0)>, <number of samples>]                                                                                   #
-        #       - space_domain = [<x1>, <x2>, <dx>]                                                                                                             #
-        #                                                                                                                                                       #
-        #   Initialization Tasks:                                                                                                                               #
-        #       - Initial setup of PINN architecture.                                                                                                           #
-        #       - Define time and space domains.                                                                                                                #
-        #       - Random and always positive parameters.                                                                                                        #
-        #                                                                                                                                                       #
-        #########################################################################################################################################################
-
         super(PINN1D, self).__init__()
 
         # Initialization of training data
@@ -264,14 +248,6 @@ class PINN1D(nn.Module):
     # Shows te state of the PINN parameters
 
     def show_model_states(self):
-        print('Time Domain: \n')
-        print(self.t_domain)
-        print()
-
-        print('Space Domain: \n')
-        print(self.x_domain)
-        print()
-
         print('Data_train: \n')
         print('N_train: ')
         print(self.data_N)

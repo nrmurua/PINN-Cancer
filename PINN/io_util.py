@@ -32,3 +32,15 @@ def print_metrics(metrics):
             print(f"  {metric_name}: {value:.6f}")
         print()
 
+
+
+def load_ODE_data(path, data_case, samples_index, device='cpu'):
+    data_train = {}
+    labels = ['N', 'T', 'I']
+
+    for label in labels:
+        file = f'{label}_{data_case}.npy'
+        file_path = os.path.join(path, file)
+        data_train[label] = torch.FloatTensor(np.array(np.load(file_path))[samples_index]).to(device)
+
+    return data_train

@@ -1,7 +1,7 @@
 from plots import plot2D
 from io_util import load_data, save_model, load_model
 from PINN1D import PINN1D
-
+from PINN_ODE import PINN_ODE
 
 def test_init_model(N_init, T_init, I_init, layers, neurons, time_params, space_params):
     try:

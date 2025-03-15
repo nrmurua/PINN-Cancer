@@ -1,0 +1,24 @@
+    N_0 = 0.754
+    T_0 = 0.245
+    I_0 = 0.507
+
+    # Carrying Capacity #
+    b = [0.89, 1.01]
+    
+    # Competition Term #
+    c = [0.13, 0.05, 0.015, 0.05]
+
+    # Death Rate #
+    d = [0.07, 0.5]
+
+    # Growth Rate #
+    r = [0.1, 0.02]
+
+    # Immune Source Rate #
+    s = 0.07
+
+    # Immune Threshold Rate #
+    alpha = 0.014
+
+    # Immune Response Rate #
+    rho = 0.02
