@@ -15,7 +15,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ##### Debugging options ##### 
 #############################
 
-debug_mode = True
+debug_mode = False
 debug_printable = True
 debug_plot = False
 disable_train = False
@@ -26,8 +26,9 @@ if __name__ == "__main__":
     ########################################
 
     nn_arch = {
-        'neurons': 100,
-        'layers': 5    }
+        'neurons': 5,
+        'layers': 3    
+    }
     
 
     ############################################
@@ -38,7 +39,7 @@ if __name__ == "__main__":
     #####                                  #####
     ############################################
 
-    time_params = [120, 6001]
+    time_params = [120.02, 6001]
 
     full_t = torch.linspace(0, time_params[0], time_params[1], device=device)
 
@@ -49,8 +50,8 @@ if __name__ == "__main__":
     data_case = 0
     data_noise = 0.003
 
-    n_points = 20
-    jump = 100
+    n_points = 60
+    jump = 50
 
     ##################################
     ##### Time and Space indices  ####
@@ -76,9 +77,10 @@ if __name__ == "__main__":
     ##### Model initialization  ####
     ################################
 
-    physics_time_params = [120, 2000]
+    physics_time_params = [120.02, 2000]
 
-    physics_training_domain = torch.linspace(0, physics_time_params[0], physics_time_params[1]).unsqueeze(-1).to(device)
+    physics_training_domain = torch.linspace(0, physics_time_params[0], physics_time_params[1], device=device).unsqueeze(-1)
+    # print(physics_training_domain)
 
     model = pinn(data_train, physics_training_domain, nn_arch, device)
 
@@ -96,9 +98,9 @@ if __name__ == "__main__":
     }
 
     loss_weights = {
-        'physics': 10,
-        'data': 0.01,
-        'params': 1,
+        'physics': 1.0,
+        'data': 0.1,
+        'params': 1.0,
         'init': 1
     }
 
