@@ -49,3 +49,7 @@ def plot2D(M, x, y, name='M'):
     fig.colorbar(surf, shrink=0.5, aspect=8)
 
     plt.show()
+
+
+def plot_training_losses(losses):
+    i=0

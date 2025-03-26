@@ -1,9 +1,9 @@
 from PINN_ODE import PINN_ODE as pinn
-from Evaluator import Evaluator as ev
+from EvaluatorODE import EvaluatorODE as ev_ODE
 from debug_functions import *
 
-from io_util import load_ODE_data, save_model, load_model, print_metrics
-from plots import plot, plot2D
+from io_util import load_ODE_data, save_model
+from plots import plot, plot2D, plot_training_losses
 
 import time 
 import torch 
@@ -16,9 +16,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #############################
 
 debug_mode = False
-debug_printable = True
+debug_printable = False
 debug_plot = False
+debug_train_printable = True
 disable_train = False
+
 
 if __name__ == "__main__":  
     ########################################
@@ -26,8 +28,8 @@ if __name__ == "__main__":
     ########################################
 
     nn_arch = {
-        'neurons': 5,
-        'layers': 3    
+        'neurons': 25,
+        'layers': 5    
     }
     
 
@@ -41,14 +43,14 @@ if __name__ == "__main__":
 
     time_params = [120.02, 6001]
 
-    full_t = torch.linspace(0, time_params[0], time_params[1], device=device)
+    full_t = torch.linspace(0, time_params[0], time_params[1], device=device).unsqueeze(-1)
 
     ###############################################
     ##### Data parameters for the file reader #####
     ###############################################
 
     data_case = 0
-    data_noise = 0.003
+    data_noise = '0.030'
 
     n_points = 60
     jump = 50
@@ -67,22 +69,35 @@ if __name__ == "__main__":
     
     path = f'./data_ODE/noisy_data/noise_{data_noise}/'
 
-    data_train = load_ODE_data(path, data_case, samples_index, device)
+    data_train, data_full = load_ODE_data(path, data_case, samples_index, device)
     data_train['t'] = data_t
 
     if debug_printable:
+        print('Data Train: \n')
         print(data_train)
+        print('\n')
+
+        print('Data Full: \n')
+        print(data_train)
+        print('\n\n')
 
     ################################
     ##### Model initialization  ####
     ################################
 
-    physics_time_params = [120.02, 2000]
+    physics_time_params = [120.02, 6001]
 
     physics_training_domain = torch.linspace(0, physics_time_params[0], physics_time_params[1], device=device).unsqueeze(-1)
     # print(physics_training_domain)
 
-    model = pinn(data_train, physics_training_domain, nn_arch, device)
+    loss_weights = {
+        'physics': 1,
+        'data': 0.01,
+        'params': 1,
+        'init': 1
+    }
+
+    model = pinn(data_train, physics_training_domain, nn_arch, loss_weights, device)
 
     if debug_printable:
         test_show_model_states(model)
@@ -91,17 +106,13 @@ if __name__ == "__main__":
         test_forward(model, printable=debug_printable)
 
     train_params = {
-        'epochs': 10000,
-        'init_lr': 1e-2,
-        'patience': 2000,
-        'save_model_path': ''
-    }
-
-    loss_weights = {
-        'physics': 1.0,
-        'data': 0.1,
-        'params': 1.0,
-        'init': 1
+        'pretrain_epochs': 10000,
+        'train_epochs': 10000,
+        'pretrain_lr': 1e-3,
+        'train_lr': 1e-2,
+        'patience': 1000,
+        'target_loss': 1e-5,
+        'batch_size': 6001
     }
 
     ################################
@@ -116,27 +127,30 @@ if __name__ == "__main__":
     
     if not disable_train:
         start_time = time.time()
-        model.train(train_params, loss_weights, printable=debug_printable)
+        model.train(train_params, printable=debug_train_printable)
         end_time = time.time()
         train_time = end_time - start_time
 
-    # dir_path = f'results/case_{data_case}/noise_{data_noise}/{nn_arch["layers"]}_{nn_arch["neurons"]}_{jump}_{n_points}/'
-    # file = 'model.pth'
+    dir_path = f'results/case_{data_case}/noise_{data_noise}/{nn_arch["layers"]}_{nn_arch["neurons"]}_{jump}_{n_points}/'
+    file = 'model.pth'
 
-    # model_path = save_model(model, dir_path, file)
+    model_path = save_model(model, dir_path, file)
 
-    # if debug_mode:
-    #     test_load_model(model, model_path)
+    if debug_mode:
+        test_load_model(model, model_path)
         
-    # ##################################
-    # #####    Model evaluation     ####
-    # ##################################
+    ##################################
+    #####    Model evaluation     ####
+    ##################################
+
+    evaluator = ev_ODE(full_t, data_full, data_train, device)
+
+    metrics, sol = evaluator.evaluate(model, ploting=True, save_path=dir_path)
     
-
-    # data_full = load_data(full_path, device)
-    # evaluator = ev(time_params, space_params, data_train, data_full, device)
-
-    # metrics, sol = evaluator.evaluate(model)
-    # print_metrics(metrics)
+    
+    evaluator.save_metrics(model, metrics, save_path=dir_path)
+    #plot_training_losses(losses, save_path=dir_path)
+    
+    
     
 
