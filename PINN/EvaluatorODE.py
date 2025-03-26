@@ -29,7 +29,6 @@ class EvaluatorODE():
         sol_dict = {}
 
         for i, label in enumerate(labels):
-            print(label)
             metrics[label]['MSE'] = torch.mean((self.full_data[label] - sol[:,i]) ** 2)
             metrics[label]['MAE'] = torch.mean(torch.abs(self.full_data[label] - sol[:,i]))
             metrics[label]['RMSE'] = torch.sqrt(metrics[label]['MSE'])
@@ -38,7 +37,8 @@ class EvaluatorODE():
 
             sol_dict[label] = sol[:,i].cpu().numpy()
 
-        print(sol_dict)
+        if save_path is not None:
+            self.save_metrics(model, metrics, save_path)
 
         if ploting:
             self.plot_comparison(sol_dict, save_path)
@@ -46,6 +46,7 @@ class EvaluatorODE():
         return metrics, sol_dict
     
     def plot_comparison(self, sol, save_path=None):
+        file_path = os.path.join(save_path, "comparison.png")
         plt.figure(figsize=(15,10))
         labels = ['N', 'T', 'I']
 
@@ -75,7 +76,7 @@ class EvaluatorODE():
         plt.tight_layout()
 
         if save_path:
-            plt.savefig(save_path, dpi=300)
+            plt.savefig(file_path, dpi=300)
             plt.close()
 
         plt.show()

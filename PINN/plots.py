@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-            
+import os            
 
 # Definición de funciones de ploteo
 def plot(N, T, I, x):
@@ -51,5 +51,29 @@ def plot2D(M, x, y, name='M'):
     plt.show()
 
 
-def plot_training_losses(losses):
-    i=0
+def plot_training_losses(losses, log_scale=True, save_dir=None):
+    loss_path = os.path.join(save_dir, "losses.png")
+
+    plt.figure(figsize=(10, 6))
+    
+    plt.plot(range(len(losses)), losses, label='Total Loss', color='blue', linewidth=1.5)
+    
+    if log_scale:
+        plt.yscale('log')
+    
+    plt.title('Training Losses over Epochs', fontsize=14)
+    plt.xlabel('Epoch', fontsize=12)
+    plt.ylabel('Loss (Log Scale)' if log_scale else 'Loss', fontsize=12)
+    plt.legend(fontsize=10)
+    
+    plt.grid(True, which='both', linestyle='--', alpha=0.5)
+    
+    plt.tight_layout()
+    
+    if loss_path:
+        plt.savefig(loss_path, dpi=300)
+        print(f"Training loss plot saved to {loss_path}")
+    else:
+        plt.show()
+    
+    plt.close()

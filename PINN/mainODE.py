@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
     loss_weights = {
         'physics': 1,
-        'data': 0.01,
+        'data': 0.1,
         'params': 1,
         'init': 1
     }
@@ -106,8 +106,8 @@ if __name__ == "__main__":
         test_forward(model, printable=debug_printable)
 
     train_params = {
-        'pretrain_epochs': 10000,
-        'train_epochs': 10000,
+        'pretrain_epochs': 1,
+        'train_epochs': 250,
         'pretrain_lr': 1e-3,
         'train_lr': 1e-2,
         'patience': 1000,
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     
     if not disable_train:
         start_time = time.time()
-        model.train(train_params, printable=debug_train_printable)
+        losses = model.train(train_params, printable=debug_train_printable)
         end_time = time.time()
         train_time = end_time - start_time
 
@@ -147,9 +147,7 @@ if __name__ == "__main__":
 
     metrics, sol = evaluator.evaluate(model, ploting=True, save_path=dir_path)
     
-    
-    evaluator.save_metrics(model, metrics, save_path=dir_path)
-    #plot_training_losses(losses, save_path=dir_path)
+    plot_training_losses(losses, save_dir=dir_path)
     
     
     

@@ -399,6 +399,7 @@ class PINN_ODE(nn.Module):
         self.load_state_dict(best_state['sd'])
         self.adaptive_losses.load_state_dict(best_state['lw'])
 
+        return losses_train
 
 
 
