@@ -1,1 +1,1 @@
-# PINN-1D
+# PINN-Cancer
