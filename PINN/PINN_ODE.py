@@ -28,11 +28,11 @@ class PINN_ODE(nn.Module):
         n_layers = nn_arch['layers']
 
         layers.append(nn.Linear(input_size, n_neurons))
-        layers.append(nn.Sigmoid())
+        layers.append(nn.SiLU())
 
         for _ in range(n_layers):
             layers.append(nn.Linear(n_neurons, n_neurons))
-            layers.append(nn.Sigmoid())
+            layers.append(nn.SiLU())
 
         layers.append(nn.Linear(n_neurons, output_size))
 
@@ -312,7 +312,7 @@ class PINN_ODE(nn.Module):
 
         ## Training the model with data
 
-        optimizer_train = optim.Adam(self.parameters(), lr=train_params['train_lr'])
+        optimizer_train = torch.optim.Adam(self.parameters(), lr=train_params['train_lr'])
         scheduler_train = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer_train,
             mode = 'min',
@@ -378,6 +378,11 @@ class PINN_ODE(nn.Module):
                     )
                     print(f'Last saved loss: {self.best_loss:.9f}, '
                           f'Last saved epoch: {self.best_epoch}\n')
+            else:
+                if epoch % 100 == 0:
+                    print(f'Epoch {epoch}: '
+                          f'Best Loss = {self.best_loss:.9f}, ')
+
 
             if count >= train_params['patience']:
                 print(f'Early stopping at epoch {epoch}. Out of patience')
